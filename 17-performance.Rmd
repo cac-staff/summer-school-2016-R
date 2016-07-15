@@ -11,8 +11,8 @@ source("tools/chunk-options.R")
 
 > ## Learning Objectives {.objectives}
 >
-> * Understand several common R performance bottlenecks
 > * Learn how to benchmark code
+> * Understand several common R performance bottlenecks
 > * Properly identify instances where code might benefit from parallelization 
 > * Be able to parallelize R code 
 
@@ -98,9 +98,8 @@ microbenchmark(dynamic(10),
 
 Preallocating the `sequence` variable of our loop performed better in every case. 
 Intriguingly, the speed advantage of preallocating `sequence` vs. dynamically 
-growing it actually increases with larger sizes.
-
-The reason for the difference in speed is caused by how R handles stored objects
+growing it actually increases with larger sizes. The reason for the difference 
+in speed is caused by how R handles stored objects
 in memory. Every time it has to make `sequence` bigger, R actually has to create
 a copy of `sequence` at the new size, and then add `i` to the new object. By 
 preallocating sequence at its final size, we avoid all of this unnecessary 
@@ -153,11 +152,88 @@ to be struck between having less variables and having readable code. If you do
 not understand what a piece of code is doing at first glance, break it into 
 more readable chunks and add comments wherever possible.
 
-### 
+### Use vectorized code
+
+Many of R's core functions use actually use ultra-fast code written in other 
+programming languages like C and Fortran. One major example of this is using R's
+vectorized operators and functions (that take a vector as input and return a 
+vector as output). One example of this is adding a number to a vector: in the 
+first case, we will simply add 10 to a set of 1000 random numbers with the `+`
+operator. In the second case, we will loop over all 1000 numbers and add 10 to
+each. 
+
+```{r vectors}
+randoms <- runif(1000)
+
+microbenchmark(randoms + 10, 
+               for (i in 1:1000) {
+                 randoms[i] + 10
+               })
+```
+
+Although the computer is in fact performing the same operation in both cases
+(it loops over the vector), the vectorized operation is almost 200x faster 
+because it is using an ultra-fast implementation written in another language.
+
+### Avoid repeatedly writing or reading from disk
+
+Using the hard disk on your computer is an extremely slow operation. Objects 
+stored in memory (the R workspace) are orders of magnitude faster to access.
+
+
 
 ## Parallelization with `plyr` and `doParallel`
+
+One final way to have code run faster is to simply run it with more computing 
+power. Keep in mind however, that faster code will *always* beat faster 
+hardware. As we've shown in previous 
+examples, optimizing your code can often result in it running hundreds, if not
+thousands of times faster. The performance boost offered by parallelizing code 
+is comparatively modest and is limited to the number of CPUs you have available.
+
+Furthermore, some code simply cannot be parallelized. At its heart, all parallel
+computing involves splitting a large operation into separate chunks, performing 
+operations on separate pieces of hardware, and then aggregating the results. If 
+one operation depends on the last or otherwise modifies a variable used by other 
+processes, it cannot be done in parallel. 
+
+Problems that are a good fit for parallel computing typically
+meet the following criteria:
+
++ The code takes a long time to execute
++ Each computation is completely independent of other computations
++ The code has already been optimized as much as possible
+
+With that said, let's write some parallel code! We will use `plyr` and the 
+`doParallel` package, as those packages are easy to use and not dependent on OS.
+
+How many cores do we have available?
 
 ```{r detect cores}
 library(doParallel)
 detectCores()
+```
+
+The machine this tutorial was written on has `r detectCores()` cores. Let's use 
+'em. For our example calculation, we will try to calculate the 95% confidence 
+interval for 
+
+```{r single thread}
+library(plyr)
+
+bootstrap <- function(x) {
+  return(summary(runif(100000)))
+}
+benchmark(llply(1:10000, bootstrap), replications = 1)
+```
+
+To parallelize a function using one of the `*ply` functions, it's as simple as 
+registering our parallel backend and adding the argument `.parallel = TRUE`.
+
+```{r parallel}
+registerDoParallel(cores = 4)
+benchmark(
+  ldply(1:10000, bootstrap),
+  ldply(1:10000, bootstrap, .parallel = TRUE), 
+  replications = 1)
 ```
