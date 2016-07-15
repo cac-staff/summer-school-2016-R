@@ -74,9 +74,23 @@ To help you understand why we wrote that in that way, let's walk through it step
 If we now wanted to move forward with the above, but only with European countries, we can combine `select` and `filter`
 
 ```{r}
-year_country_gdp_euro <- gapminder %>%
-    filter(continent=="Europe") %>%
+europe <- gapminder %>%
+    filter(continent == "Europe") %>%
     select(year,country,gdpPercap)
+# Check that we've only got data for European countries
+unique(europe$country)
+```
+
+Note that its possible to filter by multiple criteria with a single instance of 
+`filter()`. For instance, if we wanted to remove the UK from Europe, it's as 
+simple as adding an extra criteria to filter with `&` (no referendum required!).
+If we wanted to get entries where either condition was true, we would use `|`.
+
+```{r}
+europe <- gapminder %>%
+    filter(continent == "Europe" & country != "United Kingdom") %>%
+    select(year,country,gdpPercap)
+unique(europe$country)
 ```
 
 > ## Challenge 1 {.challenge}

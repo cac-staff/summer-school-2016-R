@@ -106,9 +106,58 @@ If we now wanted to move forward with the above, but only with European countrie
 
 
 ~~~{.r}
-year_country_gdp_euro <- gapminder %>%
-    filter(continent=="Europe") %>%
+europe <- gapminder %>%
+    filter(continent == "Europe") %>%
     select(year,country,gdpPercap)
+# Check that we've only got data for European countries
+unique(europe$country)
+~~~
+
+
+
+~~~{.output}
+ [1] Albania                Austria                Belgium               
+ [4] Bosnia and Herzegovina Bulgaria               Croatia               
+ [7] Czech Republic         Denmark                Finland               
+[10] France                 Germany                Greece                
+[13] Hungary                Iceland                Ireland               
+[16] Italy                  Montenegro             Netherlands           
+[19] Norway                 Poland                 Portugal              
+[22] Romania                Serbia                 Slovak Republic       
+[25] Slovenia               Spain                  Sweden                
+[28] Switzerland            Turkey                 United Kingdom        
+142 Levels: Afghanistan Albania Algeria Angola Argentina ... Zimbabwe
+
+~~~
+
+Note that its possible to filter by multiple criteria with a single instance of 
+`filter()`. For instance, if we wanted to remove the UK from Europe, it's as 
+simple as adding an extra criteria to filter with `&` (no referendum required!).
+If we wanted to get entries where either condition was true, we would use `|`.
+
+
+~~~{.r}
+europe <- gapminder %>%
+    filter(continent == "Europe" & country != "United Kingdom") %>%
+    select(year,country,gdpPercap)
+unique(europe$country)
+~~~
+
+
+
+~~~{.output}
+ [1] Albania                Austria                Belgium               
+ [4] Bosnia and Herzegovina Bulgaria               Croatia               
+ [7] Czech Republic         Denmark                Finland               
+[10] France                 Germany                Greece                
+[13] Hungary                Iceland                Ireland               
+[16] Italy                  Montenegro             Netherlands           
+[19] Norway                 Poland                 Portugal              
+[22] Romania                Serbia                 Slovak Republic       
+[25] Slovenia               Spain                  Sweden                
+[28] Switzerland            Turkey                
+142 Levels: Afghanistan Albania Algeria Angola Argentina ... Zimbabwe
+
 ~~~
 
 > ## Challenge 1 {.challenge}
