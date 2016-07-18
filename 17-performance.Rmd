@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Performance Optimization and Parallelization"
-subtitle: Introduction to Rbenchmark and plyr/doParallel
 minutes: 30
 ---
 
@@ -47,14 +46,15 @@ microbenchmark(sqrt(randoms))
 
 We can also compare two pieces of code at once. Just specify two pieces of code 
 to compare. In this case, we will compare the execution time of R's `sqrt()` 
-function and the `^` exponent operator.
+function and the `^` exponent operator for taking a square root.
 
 ```{r comparisons}
 microbenchmark(sqrt(randoms), randoms ^ 0.5)
 ```
 
-As it turns out, `sqrt()` is significantly faster. Using this method, we'll be 
-able to figure out what code is good (fast) and what code could use improvement.
+After benchmarking it would appear that `sqrt()` is significantly faster. Using 
+comparisons like this, we'll be able to figure out what code is good (fast) and 
+what code could use improvement.
 
 ## Common performance optimizations
 
@@ -65,7 +65,7 @@ on code performance.
 ### Preallocate for-loops
 
 Let's cover two examples of the same piece of code: in this case, just creating 
-a sequence of numbers of a specified size. For the first case (`dynamic`), we 
+a sequence of numbers of a certain length. For the first case (`dynamic`), we 
 will grow the variable `sequence` with each iteration of our loop. In the second 
 case, we will create `sequence` beforehand at its expected final size.
 
@@ -105,31 +105,29 @@ a copy of `sequence` at the new size, and then add `i` to the new object. By
 preallocating sequence at its final size, we avoid all of this unnecessary 
 copying.
 
-Note that all of the `ply` functions from the `plyr` function do this 
+Note that all of the `*ply` functions from the `plyr` function do this 
 internally. The easiest way to avoid the pitfalls of dynamically resizing an 
 object is to simply use the corresponding `*ply` function.
 
-The equivalent `ply` function for the last example, compared to `preallocated()`:
+The equivalent `*ply` function for the last example, compared to `preallocated()`:
 
 ```{r ply loop}
 library(plyr)
 
 microbenchmark(
   preallocated(10000),
-  llply(1:10000, function(x) {
-    return(x)
-  }))
+  llply(1:10000, function(x) return(x)))
 ```
 
 ### Avoid creating unnecessary variables
 
 The more things you make your computer do, the longer it will take. Saving 
-variables with `<-` is not an instantaneous operation, especially if variables 
-are comparatively large. In this case we will calculate the mean gdpPercap for a
-particular country using the `gapminder` dataset. In our `extra_variables()` 
-function, we will save all of the data for the country of interest as 
-countryData, then calculate the mean `gdpPercap`. In the second case, 
-we calculate `gdpPercap` in a single step.
+variables with `<-` is not always an instantaneous operation, especially if the 
+variables you are saving are comparatively large. In this case we will calculate
+the mean gdpPercap for a particular country using the `gapminder` dataset. In 
+our `extra_variables()` function, we will save all of the data for the country 
+of interest as `countryData`, then calculate the mean `gdpPercap`. In the second 
+case, we calculate `gdpPercap` in a single step.
 
 ```{r unnecessary vars}
 
@@ -149,8 +147,9 @@ microbenchmark(extra_variables("Germany"), less_variables("Germany"))
 
 Using less variables is faster. That said, keep in mind that there is a balance 
 to be struck between having less variables and having readable code. If you do 
-not understand what a piece of code is doing at first glance, break it into 
-more readable chunks and add comments wherever possible.
+not understand what a piece of code is doing at first glance, it's a great idea 
+to break it into more readable chunks and add comments that explain what your 
+code is doing.
 
 ### Use vectorized code
 
@@ -178,9 +177,30 @@ because it is using an ultra-fast implementation written in another language.
 ### Avoid repeatedly writing or reading from disk
 
 Using the hard disk on your computer is an extremely slow operation. Objects 
-stored in memory (the R workspace) are orders of magnitude faster to access.
+stored in memory (the R workspace) are orders of magnitude faster to access. If 
+one of your scripts is reading or writing to disk repeatedly, your code will be 
+limited by your disk I/O speed.
 
+As an example of this, we will save the data from a country as a in 
+memory and then read it back. We will then do the same thing, but instead of 
+using memory, we will save it to disk and then read it back. 
 
+```{r mem vs disk}
+
+memory <- function(country) {
+  data <- gapminder[gapminder$country == country, ]
+  return(data)
+}
+
+disk <- function(country) {
+  write.csv(gapminder[gapminder$country == country, ], 
+            file = "temp.csv", row.names = FALSE)
+  return(read.csv("temp.csv", as.is = TRUE))
+}
+
+microbenchmark(memory("Germany"), disk("Germany"))
+file.remove("temp.csv")  # clean up after ourselves
+```
 
 ## Parallelization with `plyr` and `doParallel`
 
@@ -233,7 +253,7 @@ registering our parallel backend and adding the argument `.parallel = TRUE`.
 ```{r parallel}
 registerDoParallel(cores = 4)
 benchmark(
-  ldply(1:10000, bootstrap),
-  ldply(1:10000, bootstrap, .parallel = TRUE), 
+  ldply(1:1000, bootstrap),
+  ldply(1:1000, bootstrap, .parallel = TRUE), 
   replications = 1)
 ```
