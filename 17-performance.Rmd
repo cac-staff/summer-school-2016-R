@@ -326,3 +326,28 @@ microbenchmark(
 stopImplicitCluster()
 ```
 
+### Final notes
+
+Sometimes, if what you're 
+parallelizing is very fast, your code make actually run *slower* when in parallel.
+Every parallel iteration of your `*ply` function involves splitting up your job
+and sending it to the different parallel R workers. If individual iterations run
+slower in parallel, it is likely that your function is spending more time 
+splitting up the job to run it on multiple cores than it is doing actual work. 
+These types of jobs should not be done in parallel.
+
+Attempting to `registerDoParallel(cores)` with more cores than your machine 
+actually has will slow down your job. If you tried to do a 16 core computation on
+a machine that only has 4 cores, for instance, the 16 R workers will be forced to
+take turns on your available CPUs, resulting in them running at roughly 25% speed. 
+For the same reason, do not put a parallel function inside another parallel 
+function. Something like this: `**ply(data, function(x) {**ply(data, fun, .parallel = TRUE)}), .parallel = TRUE)` will 
+only end badly. 
+
+Finally when running a parallel R job on a compute cluster, **NEVER** do this: 
+`registerDoParallel(cores = detectCores())`. This will attempt to use every 
+available CPU (including ones you have not been allocated), potentially ruining 
+other jobs on a compute node. You must register a fixed number of cores 
+(`registerDoParallel(cores = 4)` for instance), and then request that number of 
+cores from the scheduler.
+

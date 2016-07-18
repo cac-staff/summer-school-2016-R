@@ -51,15 +51,15 @@
 randoms &lt;-<span class="st"> </span><span class="kw">runif</span>(<span class="dv">100</span>)
 <span class="kw">microbenchmark</span>(<span class="kw">sqrt</span>(randoms))</code></pre></div>
 <pre class="output"><code>Unit: microseconds
-          expr   min    lq    mean median     uq    max neval
- sqrt(randoms) 1.125 1.181 1.52956  1.231 1.2795 18.272   100
+          expr   min    lq    mean median    uq    max neval
+ sqrt(randoms) 1.118 1.257 1.48609 1.2985 1.334 17.515   100
 </code></pre>
 <p>We can also compare two pieces of code at once. Just specify two pieces of code to compare. In this case, we will compare the execution time of R’s <code>sqrt()</code> function and the <code>^</code> exponent operator for taking a square root.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">microbenchmark</span>(<span class="kw">sqrt</span>(randoms), randoms ^<span class="st"> </span><span class="fl">0.5</span>)</code></pre></div>
 <pre class="output"><code>Unit: microseconds
-          expr    min     lq     mean median     uq    max neval
- sqrt(randoms)  1.074  1.264  2.27655  1.358  1.511 82.101   100
-   randoms^0.5 10.562 10.718 11.91397 10.791 10.891 54.953   100
+          expr    min      lq     mean median      uq     max neval
+ sqrt(randoms)  1.102  1.2700  1.71767  1.377  1.5485  17.973   100
+   randoms^0.5 10.590 10.7765 15.94200 10.874 11.2030 298.370   100
 </code></pre>
 <p>After benchmarking it would appear that <code>sqrt()</code> is significantly faster. Using comparisons like this, we’ll be able to figure out what code is good (fast) and what code could use improvement.</p>
 <h2 id="common-performance-optimizations">Common performance optimizations</h2>
@@ -91,24 +91,24 @@ preallocated &lt;-<span class="st"> </span>function(size) {
                <span class="kw">preallocated</span>(<span class="dv">1000</span>),
                <span class="kw">preallocated</span>(<span class="dv">10000</span>))</code></pre></div>
 <pre class="output"><code>Unit: microseconds
-                expr       min         lq         mean      median
-         dynamic(10)    11.806    12.9790     19.18848     17.2040
-        dynamic(100)   113.567   129.6890    149.95686    143.7180
-       dynamic(1000)  1824.694  2004.3175   2964.40888   2207.4025
-      dynamic(10000) 93683.446 98295.5590 119174.53041 106747.3370
-    preallocated(10)     9.760    11.3130     17.33042     15.0660
-   preallocated(100)    78.057    87.0785    118.28348     96.7120
-  preallocated(1000)   758.712   825.1315    982.33540    873.1515
- preallocated(10000)  7986.356  8494.2785   9449.82942   9257.7575
-         uq        max neval
-     23.532     43.067   100
-    161.072    247.068   100
-   2921.401  47248.725   100
- 141109.476 212977.332   100
-     22.891     37.607   100
-    107.210   1543.479   100
-    979.413   4135.261   100
-  10008.180  12757.085   100
+                expr       min          lq         mean      median
+         dynamic(10)    12.013     14.1545     21.08508     16.9640
+        dynamic(100)   116.729    133.5830    158.08893    145.4185
+       dynamic(1000)  1836.242   2142.1455   3189.47906   2663.8300
+      dynamic(10000) 92574.725 100751.2375 120766.04840 109819.2705
+    preallocated(10)     9.923     11.9220     18.89082     17.7230
+   preallocated(100)    81.102     88.6555    103.51341     95.1705
+  preallocated(1000)   776.135    852.0280   1004.88944    907.9835
+ preallocated(10000)  8187.022   8579.1210   9595.38399   9130.6060
+          uq        max neval
+     24.3220     79.757   100
+    173.2030    279.465   100
+   3094.8480  45449.344   100
+ 142190.6030 205317.575   100
+     22.7275     97.232   100
+    110.0850    226.714   100
+   1037.4640   2639.557   100
+  10290.4660  13649.102   100
 </code></pre>
 <p>Preallocating the <code>sequence</code> variable of our loop performed better in every case. Intriguingly, the speed advantage of preallocating <code>sequence</code> vs. dynamically growing it actually increases with larger sizes. The reason for the difference in speed is caused by how R handles stored objects in memory. Every time it has to make <code>sequence</code> bigger, R actually has to create a copy of <code>sequence</code> at the new size, and then add <code>i</code> to the new object. By preallocating sequence at its final size, we avoid all of this unnecessary copying.</p>
 <p>Note that all of the <code>*ply</code> functions from the <code>plyr</code> function do this internally. The easiest way to avoid the pitfalls of dynamically resizing an object is to simply use the corresponding <code>*ply</code> function.</p>
@@ -120,11 +120,11 @@ preallocated &lt;-<span class="st"> </span>function(size) {
   <span class="kw">llply</span>(<span class="dv">1</span>:<span class="dv">10000</span>, function(x) <span class="kw">return</span>(x)))</code></pre></div>
 <pre class="output"><code>Unit: milliseconds
                                   expr      min       lq      mean
-                   preallocated(10000) 8.343827 8.891602 10.557074
- llply(1:10000, function(x) return(x)) 7.511032 8.152545  8.827441
+                   preallocated(10000) 8.343753 8.805730 10.772959
+ llply(1:10000, function(x) return(x)) 7.377793 7.892931  8.805502
    median        uq      max neval
- 9.942588 10.590820 60.54052   100
- 8.431874  9.731769 11.20537   100
+ 10.02329 11.242248 67.28878   100
+  8.62486  9.408815 11.17397   100
 </code></pre>
 <h3 id="avoid-creating-unnecessary-variables">Avoid creating unnecessary variables</h3>
 <p>The more things you make your computer do, the longer it will take. Saving variables with <code>&lt;-</code> is not always an instantaneous operation, especially if the variables you are saving are comparatively large. In this case we will calculate the mean gdpPercap for a particular country using the <code>gapminder</code> dataset. In our <code>extra_variables()</code> function, we will save all of the data for the country of interest as <code>countryData</code>, then calculate the mean <code>gdpPercap</code>. In the second case, we calculate <code>gdpPercap</code> in a single step.</p>
@@ -141,12 +141,12 @@ less_variables &lt;-<span class="st"> </span>function(country) {
 
 <span class="kw">microbenchmark</span>(<span class="kw">extra_variables</span>(<span class="st">&quot;Germany&quot;</span>), <span class="kw">less_variables</span>(<span class="st">&quot;Germany&quot;</span>))</code></pre></div>
 <pre class="output"><code>Unit: microseconds
-                       expr     min      lq     mean   median       uq
- extra_variables(&quot;Germany&quot;) 254.125 269.125 329.0165 289.8060 332.5805
-  less_variables(&quot;Germany&quot;) 111.658 114.932 169.9017 118.0665 139.4720
+                       expr     min       lq     mean  median       uq
+ extra_variables(&quot;Germany&quot;) 253.530 258.5945 360.6558 274.616 321.8900
+  less_variables(&quot;Germany&quot;) 110.416 113.5490 133.6912 115.664 145.1995
       max neval
- 1926.851   100
- 1714.942   100
+ 2410.062   100
+  375.777   100
 </code></pre>
 <p>Using less variables is faster. That said, keep in mind that there is a balance to be struck between having less variables and having readable code. If you do not understand what a piece of code is doing at first glance, it’s a great idea to break it into more readable chunks and add comments that explain what your code is doing.</p>
 <h3 id="use-vectorized-code">Use vectorized code</h3>
@@ -159,11 +159,11 @@ less_variables &lt;-<span class="st"> </span>function(country) {
                })</code></pre></div>
 <pre class="output"><code>Unit: microseconds
                                       expr     min       lq      mean
-                              randoms + 10   1.819   2.3455   3.72634
- for (i in 1:1000) {     randoms[i] + 10 } 355.607 400.9680 469.42714
+                              randoms + 10   2.285   2.5485   3.89762
+ for (i in 1:1000) {     randoms[i] + 10 } 354.520 403.1360 497.57094
    median       uq      max neval
-   2.9195   3.2900   43.062   100
- 444.2645 482.1175 1699.012   100
+   3.0245   3.7370   29.299   100
+ 460.2490 530.2925 2293.270   100
 </code></pre>
 <p>Although the computer is in fact performing the same operation in both cases (it loops over the vector), the vectorized operation is almost 200x faster because it is using an ultra-fast implementation written in another language.</p>
 <h3 id="avoid-repeatedly-writing-or-reading-from-disk">Avoid repeatedly writing or reading from disk</h3>
@@ -183,11 +183,11 @@ disk &lt;-<span class="st"> </span>function(country) {
 <span class="kw">microbenchmark</span>(<span class="kw">memory</span>(<span class="st">&quot;Germany&quot;</span>), <span class="kw">disk</span>(<span class="st">&quot;Germany&quot;</span>))</code></pre></div>
 <pre class="output"><code>Unit: microseconds
               expr      min        lq      mean    median        uq
- memory(&quot;Germany&quot;)  238.873  280.2125  399.4956  312.1265  370.1595
-   disk(&quot;Germany&quot;) 1776.537 2096.0815 2876.5894 2522.1570 3106.0465
+ memory(&quot;Germany&quot;)  242.075  275.7285  380.5267  304.1155  345.0335
+   disk(&quot;Germany&quot;) 1901.962 2040.0400 2381.5342 2154.5500 2419.0180
       max neval
- 3877.785   100
- 9494.601   100
+ 3193.915   100
+ 7233.583   100
 </code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">file.remove</span>(<span class="st">&quot;temp.csv&quot;</span>)  <span class="co"># clean up after ourselves</span></code></pre></div>
 <pre class="output"><code>[1] TRUE
@@ -244,11 +244,11 @@ fakefunc &lt;-<span class="st"> </span>function(country) {
   <span class="dt">times =</span> <span class="dv">1</span>)</code></pre></div>
 <pre class="output"><code>Unit: seconds
                                                          expr       min
-                   laply(unique(gapminder$country), fakefunc) 28.780111
- laply(unique(gapminder$country), fakefunc, .parallel = TRUE)  7.486148
+                   laply(unique(gapminder$country), fakefunc) 28.821741
+ laply(unique(gapminder$country), fakefunc, .parallel = TRUE)  7.530481
         lq      mean    median        uq       max neval
- 28.780111 28.780111 28.780111 28.780111 28.780111     1
-  7.486148  7.486148  7.486148  7.486148  7.486148     1
+ 28.821741 28.821741 28.821741 28.821741 28.821741     1
+  7.530481  7.530481  7.530481  7.530481  7.530481     1
 </code></pre>
 <h3 id="on-windows">On Windows</h3>
 <p>Parallelizing a function on Windows is slightly harder than on OSX/Linux. On OSX/Linux, the workspace is copied to all of the parallel processes you use. On Windows, the parallel R processes must be manually created and variables and functions must be passed to your parallel R workers (this is done with the <code>.paropts</code> argument to <code>*ply</code>. Finally, once you are done using R in parallel (like at the end of your script), you must stop your parallel R workers with <code>stopImplicitCluster()</code> or they will hang around and continue to eat up system resources.</p>
@@ -283,6 +283,10 @@ fakefunc &lt;-<span class="st"> </span>function(country) {
 
 <span class="co"># kill parallel workers</span>
 <span class="kw">stopImplicitCluster</span>()</code></pre></div>
+<h3 id="final-notes">Final notes</h3>
+<p>Sometimes, if what you’re parallelizing is very fast, your code make actually run <em>slower</em> when in parallel. Every parallel iteration of your <code>*ply</code> function involves splitting up your job and sending it to the different parallel R workers. If individual iterations run slower in parallel, it is likely that your function is spending more time splitting up the job to run it on multiple cores than it is doing actual work. These types of jobs should not be done in parallel.</p>
+<p>Attempting to <code>registerDoParallel(cores)</code> with more cores than your machine actually has will slow down your job. If you tried to do a 16 core computation on a machine that only has 4 cores, for instance, the 16 R workers will be forced to take turns on your available CPUs, resulting in them running at roughly 25% speed. For the same reason, do not put a parallel function inside another parallel function. Something like this: <code>**ply(data, function(x) {**ply(data, fun, .parallel = TRUE)}), .parallel = TRUE)</code> will only end badly.</p>
+<p>Finally when running a parallel R job on a compute cluster, <strong>NEVER</strong> do this: <code>registerDoParallel(cores = detectCores())</code>. This will attempt to use every available CPU (including ones you have not been allocated), potentially ruining other jobs on a compute node. You must register a fixed number of cores (<code>registerDoParallel(cores = 4)</code> for instance), and then request that number of cores from the scheduler.</p>
         </div>
       </div>
       </article>
