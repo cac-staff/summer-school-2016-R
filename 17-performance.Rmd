@@ -202,6 +202,7 @@ microbenchmark(memory("Germany"), disk("Germany"))
 file.remove("temp.csv")  # clean up after ourselves
 ```
 
+
 ## Parallelization with `plyr` and `doParallel`
 
 One final way to have code run faster is to simply run it with more computing 
@@ -209,7 +210,7 @@ power. Keep in mind however, that faster code will *always* beat faster
 hardware. As we've shown in previous 
 examples, optimizing your code can often result in it running hundreds, if not
 thousands of times faster. The performance boost offered by parallelizing code 
-is comparatively modest and is limited to the number of CPUs you have available.
+is comparatively modest and is limited by the number of CPUs you have available.
 
 Furthermore, some code simply cannot be parallelized. At its heart, all parallel
 computing involves splitting a large operation into separate chunks, performing 
@@ -217,7 +218,7 @@ operations on separate pieces of hardware, and then aggregating the results. If
 one operation depends on the last or otherwise modifies a variable used by other 
 processes, it cannot be done in parallel. 
 
-Problems that are a good fit for parallel computing typically
+Put more simply, problems that are a good fit for parallel computing typically
 meet the following criteria:
 
 + The code takes a long time to execute
@@ -225,7 +226,8 @@ meet the following criteria:
 + The code has already been optimized as much as possible
 
 With that said, let's write some parallel code! We will use `plyr` and the 
-`doParallel` package, as those packages are easy to use and not dependent on OS.
+`doParallel` package, as those packages are easy to use and can be run on any OS
+(OSX/Linux/Windows).
 
 How many cores do we have available?
 
@@ -235,25 +237,92 @@ detectCores()
 ```
 
 The machine this tutorial was written on has `r detectCores()` cores. Let's use 
-'em. For our example calculation, we will try to calculate the 95% confidence 
-interval for 
+'em. For our example calculation, we will actually cheat a bit and make function
+that just returns the mean gdp for a country / 1000 (from `gapminder`) after 
+waiting for a fraction of a second. The process for parallelization on is 
+slightly different between UNIX (OSX/Linux) and Windows.
 
-```{r single thread}
-library(plyr)
 
-bootstrap <- function(x) {
-  return(summary(runif(100000)))
-}
-benchmark(llply(1:10000, bootstrap), replications = 1)
-```
+### On OSX/Linux
 
 To parallelize a function using one of the `*ply` functions, it's as simple as 
-registering our parallel backend and adding the argument `.parallel = TRUE`.
+registering a parallel backend with `registerDoParallel(cores)` once in your 
+script and adding the argument `.parallel = TRUE` to the `*ply` function you 
+want to use. That's it - you're done!
 
+So the parallel workflow looks like this:
+
++ `registerDoParallel(cores)`
++ Parallel calculations with `plyr`
+
+A sample parallel script on OSX/Linux might look like this:
 ```{r parallel}
-registerDoParallel(cores = 4)
-benchmark(
-  ldply(1:1000, bootstrap),
-  ldply(1:1000, bootstrap, .parallel = TRUE), 
-  replications = 1)
+library(plyr)
+library(microbenchmark)
+library(gapminder)
+library(doParallel)
+
+registerDoParallel(cores = detectCores())
+
+someVariable <- 1000
+
+fakefunc <- function(country) {
+  Sys.sleep(0.2)
+  df <- gapminder[gapminder$country == country, ]
+  toReturn <- data.frame(country, gdp = mean(df$gdpPercap) / someVariable)
+  return(toReturn)
+}
+
+microbenchmark(
+  laply(unique(gapminder$country), fakefunc),
+  laply(unique(gapminder$country), fakefunc, .parallel = TRUE),
+  times = 1)
 ```
+
+
+### On Windows
+
+Parallelizing a function on Windows is slightly harder than on OSX/Linux. 
+On OSX/Linux, the workspace is copied to all of the parallel processes you use. 
+On Windows, the parallel R processes must be manually created and variables and 
+functions must be passed to your parallel R workers (this is done with the 
+`.paropts` argument to `*ply`. Finally, once you are done using R in parallel 
+(like at the end of your script), you must stop your parallel R workers with
+`stopImplicitCluster()` or they will hang around and continue to eat up system
+resources.
+
+On Windows, a sample parallel workflow looks like this:
+
++ `registerDoParallel(cores)`
++ Parallel calculations with `plyr` (must use `.paropts` to pass variables and 
+packages). `.paropts` typically looks like `.paropts = list(.packages = c("package1", "package2"), .export = c("variableName1", "functionName2"))`
++ `stopImplicitCluster()`
+
+```{r windows parallel, eval=FALSE}
+library(microbenchmark)
+library(plyr)
+library(doParallel)
+library(gapminder)
+
+# start parallel workers
+registerDoParallel(cores = detectCores())
+
+someVariable <- 1000
+
+fakefunc <- function(country) {
+  Sys.sleep(0.2)
+  df <- gapminder[gapminder$country == country, ]
+  toReturn <- data.frame(country, gdp = mean(df$gdpPercap) / someVariable)
+  return(toReturn)
+}
+
+microbenchmark(
+  ldply(unique(gapminder$country), fakefunc),
+  ldply(unique(gapminder$country), fakefunc, .parallel = TRUE, 
+        .paropts = list(.packages = "gapminder", .export = c("someVariable"))),
+  times = 1)
+
+# kill parallel workers
+stopImplicitCluster()
+```
+
