@@ -54,7 +54,8 @@ usability.
 13. [Dataframe manipulation with dplyr](13-dplyr.html)
 14. [Dataframe manipulation with tidyr](14-tidyr.html)
 15. [Producing reports with knitr](15-knitr-markdown.html)
-16. [Best practices for writing good code](16-wrap-up.html)
+16. [Performance optimization and parallelization](17-performance.html)
+17. [Best practices for writing good code](16-wrap-up.html)
 
 
 ## Other Resources
